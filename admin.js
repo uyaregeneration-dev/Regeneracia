@@ -1,0 +1,10 @@
+const sb=supabase.createClient("https://bexjbdebemgabdpbxbmz.supabase.co","sb_publishable_NrALwKxwLD_ywkyL4L-utQ_ztwt_Nsu");const $=x=>document.getElementById(x);const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+async function show(s){$("login").hidden=true;$("panel").hidden=false;$("user").textContent=s.user.email;cats();list()}
+$("go").onclick=async()=>{const r=await sb.auth.signInWithPassword({email:$("email").value,password:$("pass").value});$("msg").textContent=r.error?r.error.message:"";if(r.data?.session)show(r.data.session)};
+$("out").onclick=async()=>{await sb.auth.signOut();location.reload()};
+async function cats(){const r=await sb.from("categories").select("*").order("id");$("cat").innerHTML=(r.data||[]).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}
+async function list(){const r=await sb.from("content").select("*,categories(name)").order("created_at",{ascending:false});$("list").innerHTML=(r.data||[]).map(x=>`<p><b>${esc(x.title)}</b> — ${esc(x.categories?.name||"")} <button onclick="del(${x.id})">Видалити</button></p>`).join("")}
+$("add").onclick=async()=>{let image_url=null,f=$("file").files[0];if(f){const path=Date.now()+"-"+f.name.replace(/[^a-zA-Z0-9._-]/g,"_");const u=await sb.storage.from("media").upload(path,f);if(u.error){$("status").textContent=u.error.message;return}image_url=sb.storage.from("media").getPublicUrl(path).data.publicUrl}const r=await sb.from("content").insert({category_id:Number($("cat").value),title:$("title").value,body:$("body").value,image_url,video_url:$("video").value||null,published:$("pub").checked});$("status").textContent=r.error?r.error.message:"Опубліковано!";if(!r.error)list()};
+window.del=async id=>{if(confirm("Видалити?")){await sb.from("content").delete().eq("id",id);list()}};
+$("addcat").onclick=async()=>{await sb.from("categories").insert({name:$("newcat").value});$("newcat").value="";cats()};
+sb.auth.getSession().then(r=>{if(r.data.session)show(r.data.session)});
